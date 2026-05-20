@@ -1,0 +1,26 @@
+{
+  "name": "systemische-aufstellung",
+  "version": "1.0.0",
+  "description": "KI-gestützte systemische Aufstellung – geführt durch einen Coach-Dialog mit interaktivem Whiteboard",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "deploy": "npm run build && wrangler pages deploy dist",
+    "dev:worker": "wrangler pages dev dist"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.0",
+    "wrangler": "^3.99.0"
+  },
+  "license": "MIT"
+}

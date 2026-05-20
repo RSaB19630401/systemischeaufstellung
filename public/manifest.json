@@ -1,0 +1,17 @@
+{
+  "name": "Systemische Aufstellung",
+  "short_name": "Aufstellung",
+  "description": "KI-gestützte systemische Aufstellung mit interaktivem Whiteboard",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FDF6EE",
+  "theme_color": "#3A3028",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

@@ -1,0 +1,355 @@
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Nunito:wght@400;500;600;700&display=swap');
+
+/* ─── Reset & Base ─── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root { height: 100%; overflow: hidden; }
+body {
+  font-family: 'Nunito', sans-serif;
+  color: #3A3028;
+  background: #F0E6D8;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Welcome Screen ─── */
+.welcome-screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: linear-gradient(160deg, #FDF6EE 0%, #F0E6D8 50%, #E8DDD0 100%);
+}
+.welcome-inner { text-align: center; max-width: 680px; width: 100%; }
+.welcome-title {
+  font-family: 'Caveat', cursive;
+  font-size: clamp(2.4rem, 5vw, 3.6rem);
+  color: #3A3028;
+  margin-bottom: 8px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+.welcome-subtitle { color: #6B5E50; font-size: 1.05rem; margin-bottom: 40px; line-height: 1.6; }
+.welcome-disclaimer { color: #8B7E6E; font-size: 0.85rem; margin-bottom: 24px; font-style: italic; }
+
+.type-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  width: 100%;
+}
+.type-card {
+  background: #FFFCF7;
+  border: 2px solid #E0D5C5;
+  border-radius: 16px;
+  padding: 24px 20px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: 'Nunito', sans-serif;
+}
+.type-card:hover {
+  border-color: #B8A990;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+}
+.type-icon { font-size: 1.8rem; }
+.type-label { font-weight: 700; color: #3A3028; font-size: 1.05rem; }
+.type-desc { color: #8B7E6E; font-size: 0.88rem; line-height: 1.4; }
+
+.welcome-import { margin-top: 32px; border-top: 1px solid #E0D5C5; padding-top: 20px; }
+.import-label {
+  color: #8B7E6E; font-size: 0.85rem; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px;
+  text-decoration: underline;
+}
+
+/* ─── App Layout ─── */
+.app-layout { height: 100vh; display: flex; flex-direction: column; background: #F0E6D8; }
+
+/* ─── Toolbar ─── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: #FFFCF7;
+  border-bottom: 1px solid #E0D5C5;
+  flex-shrink: 0;
+}
+.toolbar-left { display: flex; align-items: center; gap: 10px; }
+.toolbar-title {
+  font-family: 'Caveat', cursive;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #3A3028;
+}
+.toolbar-badge {
+  font-size: 0.72rem;
+  background: #F0E6D8;
+  color: #6B5E50;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-weight: 600;
+}
+.toolbar-right { position: relative; }
+.toolbar-menu-btn {
+  background: none;
+  border: 1px solid #E0D5C5;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #3A3028;
+  font-family: 'Nunito', sans-serif;
+}
+.toolbar-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+.toolbar-dropdown {
+  position: absolute;
+  right: 0;
+  top: 110%;
+  background: #FFFCF7;
+  border: 1px solid #E0D5C5;
+  border-radius: 12px;
+  padding: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  z-index: 100;
+  min-width: 200px;
+}
+.toolbar-dropdown-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  color: #3A3028;
+  font-family: 'Nunito', sans-serif;
+}
+.toolbar-dropdown-item:hover { background: #F0E6D8; }
+
+/* ─── Mobile Tabs ─── */
+.mobile-tabs {
+  display: none;
+  border-bottom: 1px solid #E0D5C5;
+  background: #FFFCF7;
+}
+.mobile-tab {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  color: #8B7E6E;
+  font-weight: 400;
+  font-size: 0.88rem;
+  border-bottom: 2px solid transparent;
+  font-family: 'Nunito', sans-serif;
+}
+.mobile-tab--active {
+  background: #F0E6D8;
+  color: #3A3028;
+  font-weight: 700;
+  border-bottom-color: #3A3028;
+}
+
+@media (max-width: 767px) {
+  .mobile-tabs { display: flex; }
+  .panel--hidden-mobile { display: none !important; }
+}
+
+/* ─── Main Content ─── */
+.main-content { flex: 1; display: flex; overflow: hidden; min-height: 0; }
+
+.panel-chat {
+  width: 40%;
+  min-width: 320px;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #E0D5C5;
+  background: #F7F1E8;
+}
+@media (max-width: 767px) {
+  .panel-chat { width: 100%; min-width: 0; max-width: none; border-right: none; }
+}
+
+.panel-board {
+  flex: 1;
+  position: relative;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+}
+@media (max-width: 767px) {
+  .panel-board { width: 100%; }
+}
+
+/* ─── Chat Panel ─── */
+.chat-panel { display: flex; flex-direction: column; height: 100%; }
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.chat-bubble {
+  max-width: 85%;
+  padding: 10px 14px;
+  border-radius: 16px;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+.chat-bubble--user {
+  align-self: flex-end;
+  background: #3A3028;
+  color: #FFF;
+  border-bottom-right-radius: 4px;
+}
+.chat-bubble--assistant {
+  align-self: flex-start;
+  background: #FFFCF7;
+  color: #3A3028;
+  border: 1px solid #E0D5C5;
+  border-bottom-left-radius: 4px;
+}
+.chat-bubble--system {
+  align-self: flex-start;
+  background: transparent;
+  padding: 4px 14px;
+}
+.chat-system-text { color: #8B7E6E; font-size: 0.82rem; }
+.chat-bubble--loading {
+  align-self: flex-start;
+  padding: 10px 18px;
+  border-radius: 16px;
+  background: #FFFCF7;
+  border: 1px solid #E0D5C5;
+  color: #8B7E6E;
+  font-size: 0.9rem;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.dot { animation: pulse 1.2s infinite; }
+.dot-2 { animation-delay: 0.2s; }
+.dot-3 { animation-delay: 0.4s; }
+@keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+.chat-input-bar {
+  padding: 12px 16px;
+  border-top: 1px solid #E0D5C5;
+  background: #FFFCF7;
+  display: flex;
+  gap: 8px;
+}
+.chat-input {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid #E0D5C5;
+  background: #FFF;
+  outline: none;
+  font-size: 0.92rem;
+  font-family: 'Nunito', sans-serif;
+  color: #3A3028;
+}
+.chat-input:focus { border-color: #B8A990; }
+.chat-send {
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: none;
+  background: #3A3028;
+  color: #FFF;
+  cursor: pointer;
+  font-size: 0.92rem;
+  font-weight: 600;
+  font-family: 'Nunito', sans-serif;
+}
+.chat-send:disabled { background: #CCC; cursor: default; }
+
+/* ─── Whiteboard ─── */
+.whiteboard-container {
+  width: 100%;
+  height: 100%;
+  background: #FFF8F0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.whiteboard-svg {
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  user-select: none;
+}
+
+/* ─── Legend ─── */
+.legend {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: #FFFCF7ee;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 0.7rem;
+  border: 1px solid #E0D5C5;
+  color: #6B5E50;
+  z-index: 5;
+  max-width: 160px;
+}
+.legend-title { font-size: 0.75rem; }
+.legend-items { margin-top: 4px; display: flex; flex-direction: column; gap: 3px; }
+.legend-item { display: flex; align-items: center; gap: 6px; }
+
+/* ─── Person Detail ─── */
+.person-detail {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  background: #FFFCF7;
+  border-radius: 12px;
+  padding: 12px 16px;
+  border: 1px solid #E0D5C5;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  z-index: 10;
+}
+.person-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  color: #3A3028;
+}
+.person-detail-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  color: #8B7E6E;
+}
+.emotion-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.emotion-chip {
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid #E0D5C5;
+  background: #FFF;
+  font-size: 0.78rem;
+  cursor: pointer;
+  font-weight: 400;
+  font-family: 'Nunito', sans-serif;
+}
+.emotion-chip--active { font-weight: 700; border-width: 2px; }
