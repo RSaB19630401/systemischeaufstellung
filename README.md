@@ -4,6 +4,8 @@ KI-gestützte systemische Aufstellung mit interaktivem Whiteboard – geführt d
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
+**Live:** [https://rsab19630401.github.io/systemischeaufstellung/](https://rsab19630401.github.io/systemischeaufstellung/)
+
 ## Was ist das?
 
 Eine Web-App, die systemische Aufstellungen digital abbildet. Ein KI-Coach (Claude von Anthropic) führt den Nutzer durch den Aufstellungsprozess, stellt Fragen zu Beziehungen und Dynamiken, und platziert Figuren auf einem interaktiven Whiteboard. Der Nutzer kann die Figuren frei verschieben – die KI reagiert auf Veränderungen.
@@ -21,8 +23,9 @@ Eine Web-App, die systemische Aufstellungen digital abbildet. Ein KI-Coach (Clau
 
 - **Coach-Dialog** – KI-geführter Chat, der schrittweise durch die Aufstellung führt
 - **Interaktives Whiteboard** – SVG-basiert mit Drag & Drop, handgezeichneter Ästhetik
+- **Animationen** – Neue Personen erscheinen animiert, Verschiebungen pulsieren, Beziehungslinien zeichnen sich auf
 - **Hybrid-Kopplung** – KI platziert Figuren automatisch, Nutzer kann frei verschieben, Änderungen fließen zurück in den Dialog
-- **Emotionen** – Jede Person kann ein Gefühl zugewiesen bekommen (Neutral, Zufrieden, Traurig, Wütend, Ängstlich, Verwirrt, Hoffnungsvoll)
+- **Emotionen** – Jede Person kann ein Gefühl zugewiesen bekommen
 - **Beziehungstypen** – Eng, Distanziert, Konflikt, Abgebrochen, Verstrickt
 - **Export** – JSON (vollständiger Zustand), SVG, PNG, PDF-Bericht
 - **Import** – JSON-Zwischenstände wieder laden
@@ -32,119 +35,139 @@ Eine Web-App, die systemische Aufstellungen digital abbildet. Ein KI-Coach (Clau
 ## Architektur
 
 ```
-┌─────────────────────────────────────────────┐
-│  Cloudflare Pages (Static Site)             │
-│  ┌──────────────┐  ┌─────────────────────┐  │
-│  │  React SPA   │  │  Whiteboard (SVG)   │  │
-│  │  Chat Panel  │◄─┼──►Drag & Drop       │  │
-│  └──────┬───────┘  └─────────────────────┘  │
-│         │                                    │
-│  ┌──────┴───────────────────────────────┐   │
-│  │  Cloudflare Pages Function (/api)    │   │
-│  │  API-Proxy (schützt den API-Key)     │   │
-│  └──────┬───────────────────────────────┘   │
-└─────────┼───────────────────────────────────┘
-          │
-  ┌───────┴──────────┐
-  │  Anthropic API   │
-  │  Claude Sonnet   │
-  └──────────────────┘
+┌──────────────────────────────────┐
+│  GitHub Pages                    │
+│  (Statische React-App)           │
+│  rsab19630401.github.io/         │
+│  systemischeaufstellung/         │
+└───────────────┬──────────────────┘
+                │ HTTPS
+┌───────────────┴──────────────────┐
+│  Cloudflare Worker               │
+│  (API-Proxy, schützt API-Key)    │
+│  systemische-aufstellung-api.    │
+│  DEIN-SUBDOMAIN.workers.dev      │
+└───────────────┬──────────────────┘
+                │
+┌───────────────┴──────────────────┐
+│  Anthropic API                   │
+│  (Claude Sonnet)                 │
+└──────────────────────────────────┘
 ```
 
-## Schnellstart
+## Setup-Anleitung
 
-### Voraussetzungen
-
-- Node.js 18+
-- Ein [Anthropic API Key](https://console.anthropic.com/)
-
-### Lokal entwickeln
+### 1. Repository klonen
 
 ```bash
-# Repository klonen
-git clone https://github.com/DEIN-USER/systemische-aufstellung.git
-cd systemische-aufstellung
-
-# Abhängigkeiten installieren
+git clone https://github.com/RSaB19630401/systemischeaufstellung.git
+cd systemischeaufstellung
 npm install
+```
 
-# API-Key konfigurieren (für lokale Entwicklung)
-echo "ANTHROPIC_API_KEY=sk-ant-..." > .dev.vars
+### 2. Cloudflare Worker deployen
 
-# Entwicklungsserver starten (Frontend + Worker)
+Der Worker ist der API-Proxy – er schützt deinen Anthropic API-Key.
+
+```bash
+# API-Key als Secret setzen (wird interaktiv abgefragt)
+npm run worker:secret
+
+# Worker deployen
+npm run worker:deploy
+```
+
+Nach dem Deploy zeigt Wrangler die URL an, z.B.:
+```
+Published systemische-aufstellung-api
+  https://systemische-aufstellung-api.DEIN-SUBDOMAIN.workers.dev
+```
+
+**Diese URL merken – sie wird im nächsten Schritt gebraucht!**
+
+### 3. GitHub Pages konfigurieren
+
+#### a) GitHub Pages aktivieren
+1. Auf GitHub → Repository → **Settings** → **Pages**
+2. Source: **GitHub Actions**
+
+#### b) Worker-URL als Variable setzen
+1. Auf GitHub → Repository → **Settings** → **Secrets and variables** → **Actions**
+2. Tab **Variables** (nicht Secrets!)
+3. **New repository variable**:
+   - Name: `VITE_API_URL`
+   - Value: `https://systemische-aufstellung-api.DEIN-SUBDOMAIN.workers.dev`
+
+#### c) Deploy auslösen
+Entweder pushen auf `main`, oder unter **Actions** → **Deploy to GitHub Pages** → **Run workflow**.
+
+### 4. Lokal entwickeln
+
+```bash
+# Terminal 1: Worker lokal starten
+# Erstelle worker/.dev.vars mit: ANTHROPIC_API_KEY=sk-ant-...
+npm run worker:dev
+
+# Terminal 2: Frontend starten (Vite-Proxy leitet /api an den Worker)
 npm run dev
 ```
 
-Der Dev-Server läuft auf `http://localhost:3000`. Der Vite-Proxy leitet `/api/*` an den lokalen Cloudflare Worker weiter.
-
-### Auf Cloudflare deployen
-
-```bash
-# Projekt bauen
-npm run build
-
-# Mit Wrangler deployen
-npx wrangler pages deploy dist
-```
-
-#### API-Key als Secret setzen:
-
-```bash
-npx wrangler pages secret put ANTHROPIC_API_KEY
-# Dann den Key eingeben
-```
-
-Alternativ im Cloudflare Dashboard unter **Pages → Settings → Environment Variables** den Key `ANTHROPIC_API_KEY` setzen.
+Die App läuft auf `http://localhost:3000`.
 
 ## Projektstruktur
 
 ```
-systemische-aufstellung/
+systemischeaufstellung/
+├── .github/
+│   └── workflows/
+│       └── deploy.yml            # GitHub Pages Auto-Deploy
+├── worker/
+│   ├── index.ts                  # Cloudflare Worker (API-Proxy)
+│   └── wrangler.toml             # Worker-Konfiguration
 ├── functions/
 │   └── api/
-│       └── chat.ts          # Cloudflare Pages Function (API-Proxy)
+│       └── chat.ts               # (Alternative: Cloudflare Pages Function)
 ├── public/
 │   ├── favicon.svg
-│   └── manifest.json        # PWA-Manifest
+│   └── manifest.json
 ├── src/
 │   ├── api/
-│   │   └── coach.ts         # KI-Coach Logik & System-Prompt
+│   │   └── coach.ts              # KI-Coach Logik & System-Prompt
 │   ├── components/
-│   │   ├── ChatPanel.tsx     # Chat-Interface
-│   │   ├── Legend.tsx        # Beziehungstypen-Legende
-│   │   ├── PersonDetail.tsx  # Emotions-Auswahl
-│   │   ├── Toolbar.tsx       # Menü mit Export/Import
-│   │   ├── WelcomeScreen.tsx # Typ-Auswahl & Import
-│   │   └── Whiteboard.tsx    # Interaktives SVG-Board
+│   │   ├── ChatPanel.tsx
+│   │   ├── Legend.tsx
+│   │   ├── PersonDetail.tsx
+│   │   ├── Toolbar.tsx
+│   │   ├── WelcomeScreen.tsx
+│   │   └── Whiteboard.tsx
 │   ├── utils/
-│   │   ├── export.ts         # Export/Import-Funktionen
-│   │   └── svg-helpers.ts    # Handgezeichnete SVG-Pfade
-│   ├── types.ts              # TypeScript-Typen
-│   ├── constants.ts          # Farben, Emotionen, Aufstellungstypen
-│   ├── App.tsx               # Haupt-App mit State Management
-│   ├── main.tsx              # Entry Point
-│   └── index.css             # Globales Styling
+│   │   ├── export.ts
+│   │   └── svg-helpers.ts
+│   ├── types.ts
+│   ├── constants.ts
+│   ├── App.tsx
+│   ├── main.tsx
+│   └── index.css
 ├── index.html
 ├── package.json
 ├── tsconfig.json
-├── vite.config.ts
-└── .gitignore
+└── vite.config.ts
 ```
 
 ## Export-Formate
 
 | Format | Inhalt |
 |--------|--------|
-| **JSON** | Vollständiger Zustand: Personen, Beziehungen, Chat-Verlauf. Kann wieder importiert werden. |
-| **SVG** | Vektorgrafik des Aufstellungsbretts. Skalierbar, editierbar. |
-| **PNG** | Hochauflösendes Rasterbild (3x Skalierung). |
-| **PDF** | Vollständiger Bericht mit Bild, Beteiligten, Beziehungen und Gesprächsverlauf. |
+| **JSON** | Vollständiger Zustand inkl. Chat-Verlauf. Kann wieder importiert werden. |
+| **SVG** | Vektorgrafik des Aufstellungsbretts. |
+| **PNG** | Hochauflösendes Rasterbild. |
+| **PDF** | Vollständiger Bericht mit Bild, Beteiligten und Gesprächsverlauf. |
 
 ## Konfiguration
 
 ### Modell ändern
 
-In `functions/api/chat.ts` das Modell anpassen:
+In `worker/index.ts` das Modell anpassen:
 
 ```typescript
 model: 'claude-sonnet-4-20250514', // oder claude-opus-4-20250514
@@ -152,34 +175,15 @@ model: 'claude-sonnet-4-20250514', // oder claude-opus-4-20250514
 
 ### Aufstellungstypen erweitern
 
-In `src/constants.ts` neue Typen hinzufügen:
-
-```typescript
-export const CONSTELLATION_TYPES: ConstellationTypeInfo[] = [
-  // ... bestehende Typen
-  { id: 'tetralemma', label: 'Tetralemma', icon: '🔀', desc: 'Entscheidungsfindung mit vier Positionen' },
-];
-```
-
-Und den Typ in `src/types.ts` ergänzen:
-
-```typescript
-export type ConstellationTypeId = 
-  | 'family' | 'organization' | 'structural' | 'symptom' | 'custom'
-  | 'tetralemma';
-```
+In `src/constants.ts` neue Typen hinzufügen und in `src/types.ts` den Typ ergänzen.
 
 ## Sicherheit
 
-- Der Anthropic API-Key wird **nie** im Frontend exponiert
-- Die Cloudflare Pages Function agiert als Proxy
-- Der Key wird als Environment Variable / Secret gesetzt
-- CORS-Header sind konfiguriert
+- Der Anthropic API-Key liegt **ausschließlich** im Cloudflare Worker (als Secret)
+- Das Frontend kennt den Key nicht
+- CORS ist auf die GitHub Pages Domain beschränkt
+- Localhost ist für Entwicklung erlaubt
 
 ## Lizenz
 
 MIT
-
-## Mitwirken
-
-Pull Requests und Issues sind willkommen.

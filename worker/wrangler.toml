@@ -1,0 +1,6 @@
+name = "systemische-aufstellung-api"
+main = "index.ts"
+compatibility_date = "2024-12-01"
+
+[vars]
+ALLOWED_ORIGIN = "https://rsab19630401.github.io"
