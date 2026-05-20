@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
-import type { Person, Relationship, RelationshipType } from '../types';
+import type { Person, Relationship, RelationshipType, RecentUpdate, AnimationType } from '../types';
 import { EMOTIONS, REL_STYLES } from '../constants';
 import { sketchyCircle, sketchyLine } from '../utils/svg-helpers';
 
@@ -9,14 +9,20 @@ interface Props {
   onMovePerson: (id: string, x: number, y: number, finished?: boolean) => void;
   onSelectPerson: (id: string) => void;
   selectedPerson: string | null;
+  recentUpdates: RecentUpdate[];
 }
 
 export default function Whiteboard({
-  persons, relationships, onMovePerson, onSelectPerson, selectedPerson,
+  persons, relationships, onMovePerson, onSelectPerson, selectedPerson, recentUpdates,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [dragging, setDragging] = useState<string | null>(null);
   const [svgRect, setSvgRect] = useState<DOMRect | null>(null);
+
+  const getAnimation = useCallback((id: string): AnimationType | null => {
+    const update = recentUpdates.find(u => u.targetId === id);
+    return update?.type || null;
+  }, [recentUpdates]);
 
   const getPos = useCallback((e: MouseEvent | TouchEvent, rect: DOMRect) => {
     const point = 'touches' in e ? e.touches[0] : e;
@@ -80,6 +86,29 @@ export default function Whiteboard({
         className="whiteboard-svg"
         viewBox="0 0 100 100"
       >
+        <defs>
+          {/* Glow filter for appear animation */}
+          <filter id="glow-appear" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="1.5" result="blur" />
+            <feFlood floodColor="#E8D77C" floodOpacity="0.6" result="color" />
+            <feComposite in="color" in2="blur" operator="in" result="glow" />
+            <feMerge>
+              <feMergeNode in="glow" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          {/* Pulse filter for move/emotion */}
+          <filter id="glow-pulse" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="1" result="blur" />
+            <feFlood floodColor="#7CB5E8" floodOpacity="0.5" result="color" />
+            <feComposite in="color" in2="blur" operator="in" result="glow" />
+            <feMerge>
+              <feMergeNode in="glow" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+
         {/* Grid dots */}
         {Array.from({ length: 9 }, (_, i) =>
           Array.from({ length: 9 }, (_, j) => (
@@ -100,13 +129,33 @@ export default function Whiteboard({
           const dashScaled = s.dash === 'none'
             ? undefined
             : s.dash.split(',').map(n => parseFloat(n) * 0.2).join(',');
+          const anim = getAnimation(rel.id);
+          const isNew = anim === 'new-relationship';
+          const isRemoving = anim === 'remove';
+
+          const pathD = sketchyLine(from.x, from.y, to.x, to.y, rel.id.charCodeAt(0));
+
           return (
-            <g key={rel.id}>
+            <g key={rel.id} className={isRemoving ? 'wb-fade-out' : ''}>
+              {/* Background glow for new relationships */}
+              {isNew && (
+                <path
+                  d={pathD}
+                  stroke={s.stroke} strokeWidth={s.width * 0.8}
+                  fill="none" opacity="0.3"
+                  className="wb-line-glow"
+                />
+              )}
               <path
-                d={sketchyLine(from.x, from.y, to.x, to.y, rel.id.charCodeAt(0))}
+                d={pathD}
                 stroke={s.stroke} strokeWidth={s.width * 0.25}
                 strokeDasharray={dashScaled}
                 fill="none" opacity="0.7"
+                className={isNew ? 'wb-line-draw' : ''}
+                style={isNew ? {
+                  strokeDasharray: '200',
+                  strokeDashoffset: '200',
+                } : undefined}
               />
               {rel.label && (
                 <text
@@ -114,6 +163,7 @@ export default function Whiteboard({
                   y={(from.y + to.y) / 2 - 1.5}
                   textAnchor="middle" fontSize="2.2"
                   fill={s.stroke} fontFamily="'Caveat', cursive" fontWeight="600"
+                  className={isNew ? 'wb-text-appear' : ''}
                 >
                   {rel.label}
                 </text>
@@ -126,10 +176,32 @@ export default function Whiteboard({
         {persons.map(p => {
           const emColor = EMOTIONS[p.emotion]?.color || EMOTIONS.neutral.color;
           const isSelected = selectedPerson === p.id;
+          const anim = getAnimation(p.id);
+          const isDragging = dragging === p.id;
+
+          let animClass = '';
+          let filterAttr: string | undefined;
+          if (anim === 'appear') {
+            animClass = 'wb-person-appear';
+            filterAttr = 'url(#glow-appear)';
+          } else if (anim === 'move') {
+            animClass = 'wb-person-pulse';
+            filterAttr = 'url(#glow-pulse)';
+          } else if (anim === 'emotion') {
+            animClass = 'wb-person-emotion';
+          } else if (anim === 'remove') {
+            animClass = 'wb-fade-out';
+          }
+
           return (
             <g
               key={p.id}
-              style={{ cursor: dragging === p.id ? 'grabbing' : 'grab' }}
+              className={animClass}
+              style={{
+                cursor: isDragging ? 'grabbing' : 'grab',
+                transition: !isDragging ? 'transform 0.4s ease' : undefined,
+              }}
+              filter={filterAttr}
               onMouseDown={e => handlePointerDown(e, p.id)}
               onTouchStart={e => handlePointerDown(e, p.id)}
               onClick={e => { e.stopPropagation(); onSelectPerson(p.id); }}
@@ -138,6 +210,24 @@ export default function Whiteboard({
                 <circle
                   cx={p.x} cy={p.y} r={R + 1.5}
                   fill="none" stroke="#B8A990" strokeWidth="0.3" strokeDasharray="1,1"
+                />
+              )}
+              {/* Ripple ring for appear/move */}
+              {(anim === 'appear' || anim === 'move') && (
+                <circle
+                  cx={p.x} cy={p.y} r={R}
+                  fill="none" stroke={p.color || '#E8927C'}
+                  strokeWidth="0.4"
+                  className="wb-ripple"
+                />
+              )}
+              {/* Emotion pulse ring */}
+              {anim === 'emotion' && (
+                <circle
+                  cx={p.x} cy={p.y} r={R * 0.55}
+                  fill="none" stroke={emColor}
+                  strokeWidth="0.5"
+                  className="wb-ripple"
                 />
               )}
               <path

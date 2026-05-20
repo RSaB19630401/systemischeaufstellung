@@ -353,3 +353,82 @@ body {
   font-family: 'Nunito', sans-serif;
 }
 .emotion-chip--active { font-weight: 700; border-width: 2px; }
+
+/* ─── Whiteboard Animations ─── */
+
+/* Person appears: scale from 0 + fade in */
+.wb-person-appear {
+  animation: wb-scale-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes wb-scale-in {
+  0% { opacity: 0; transform: scale(0); }
+  60% { opacity: 1; transform: scale(1.15); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Person moved by AI: brief pulse */
+.wb-person-pulse {
+  animation: wb-pulse-scale 0.8s ease-out;
+}
+@keyframes wb-pulse-scale {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.18); }
+  60% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+/* Emotion changed: color flash */
+.wb-person-emotion {
+  animation: wb-emotion-flash 0.7s ease-out;
+}
+@keyframes wb-emotion-flash {
+  0% { opacity: 1; }
+  25% { opacity: 0.5; transform: scale(1.12); }
+  50% { opacity: 1; transform: scale(0.96); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Ripple ring expanding outward */
+.wb-ripple {
+  animation: wb-ripple-expand 1.0s ease-out forwards;
+}
+@keyframes wb-ripple-expand {
+  0% { r: 2.5; opacity: 0.8; stroke-width: 0.6; }
+  100% { r: 10; opacity: 0; stroke-width: 0.1; }
+}
+
+/* Fade out for removals */
+.wb-fade-out {
+  animation: wb-fade-out 0.5s ease-out forwards;
+}
+@keyframes wb-fade-out {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.5); }
+}
+
+/* Relationship line draws in */
+.wb-line-draw {
+  animation: wb-draw-line 0.8s ease-out forwards;
+}
+@keyframes wb-draw-line {
+  0% { stroke-dashoffset: 200; opacity: 0.3; }
+  100% { stroke-dashoffset: 0; opacity: 0.7; }
+}
+
+/* Relationship glow fading out */
+.wb-line-glow {
+  animation: wb-glow-fade 1.2s ease-out forwards;
+}
+@keyframes wb-glow-fade {
+  0% { opacity: 0.5; stroke-width: 1.5; }
+  100% { opacity: 0; stroke-width: 0.1; }
+}
+
+/* Label text fading in */
+.wb-text-appear {
+  animation: wb-text-in 0.6s ease-out 0.3s both;
+}
+@keyframes wb-text-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}

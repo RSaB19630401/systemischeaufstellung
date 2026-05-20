@@ -86,6 +86,16 @@ export type ConstellationUpdate =
   | { action: 'add_relationship'; relationship: Relationship }
   | { action: 'remove_relationship'; id: string };
 
+/* ─── Animation Tracking ─── */
+
+export type AnimationType = 'appear' | 'move' | 'emotion' | 'new-relationship' | 'remove';
+
+export interface RecentUpdate {
+  targetId: string;
+  type: AnimationType;
+  timestamp: number;
+}
+
 /* ─── Export/Import ─── */
 
 export interface ConstellationExport {

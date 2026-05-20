@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import type {
   ConstellationTypeId, Person, Relationship,
   ChatMessage, ApiMessage, ConstellationExport, ConstellationUpdate,
+  RecentUpdate,
 } from './types';
 import { CONSTELLATION_TYPES, EMOTIONS, ROLE_COLORS } from './constants';
 import { buildSystemPrompt, callCoachAPI } from './api/coach';
@@ -29,8 +30,17 @@ export default function App() {
   const [mobileView, setMobileView] = useState<MobileView>('chat');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const colorIndex = useRef(0);
+  const [recentUpdates, setRecentUpdates] = useState<RecentUpdate[]>([]);
 
   const nextColor = () => ROLE_COLORS[colorIndex.current++ % ROLE_COLORS.length];
+
+  const trackUpdate = useCallback((targetId: string, type: RecentUpdate['type']) => {
+    const update: RecentUpdate = { targetId, type, timestamp: Date.now() };
+    setRecentUpdates(prev => [...prev.filter(u => u.targetId !== targetId || u.type !== type), update]);
+    setTimeout(() => {
+      setRecentUpdates(prev => prev.filter(u => u !== update));
+    }, 1200);
+  }, []);
 
   /* ─── Apply board updates from AI ─── */
   const applyUpdates = useCallback((updates: ConstellationUpdate[]) => {
@@ -43,17 +53,23 @@ export default function App() {
               if (prev.find(p => p.id === u.person.id)) return prev;
               return [...prev, { ...u.person, color: u.person.color || nextColor() }];
             });
+            trackUpdate(u.person.id, 'appear');
           }
           break;
         case 'move_person':
           setPersons(prev => prev.map(p => p.id === u.id ? { ...p, x: u.x, y: u.y } : p));
+          trackUpdate(u.id, 'move');
           break;
         case 'update_person':
           setPersons(prev => prev.map(p => p.id === u.id ? { ...p, ...u.changes } : p));
+          if (u.changes.emotion) trackUpdate(u.id, 'emotion');
           break;
         case 'remove_person':
-          setPersons(prev => prev.filter(p => p.id !== u.id));
-          setRelationships(prev => prev.filter(r => r.fromId !== u.id && r.toId !== u.id));
+          trackUpdate(u.id, 'remove');
+          setTimeout(() => {
+            setPersons(prev => prev.filter(p => p.id !== u.id));
+            setRelationships(prev => prev.filter(r => r.fromId !== u.id && r.toId !== u.id));
+          }, 500);
           break;
         case 'add_relationship':
           if (u.relationship) {
@@ -61,14 +77,18 @@ export default function App() {
               if (prev.find(r => r.id === u.relationship.id)) return prev;
               return [...prev, u.relationship];
             });
+            trackUpdate(u.relationship.id, 'new-relationship');
           }
           break;
         case 'remove_relationship':
-          setRelationships(prev => prev.filter(r => r.id !== u.id));
+          trackUpdate(u.id, 'remove');
+          setTimeout(() => {
+            setRelationships(prev => prev.filter(r => r.id !== u.id));
+          }, 500);
           break;
       }
     });
-  }, []);
+  }, [trackUpdate]);
 
   /* ─── Send user message to AI ─── */
   const sendMessage = useCallback(async (text: string) => {
@@ -116,6 +136,7 @@ export default function App() {
 
   const handleUpdatePerson = useCallback((id: string, changes: Partial<Person>) => {
     setPersons(prev => prev.map(p => p.id === id ? { ...p, ...changes } : p));
+    if (changes.emotion) trackUpdate(id, 'emotion');
     setPersons(current => {
       const person = current.find(p => p.id === id);
       if (person && changes.emotion) {
@@ -257,6 +278,7 @@ export default function App() {
             onMovePerson={handleMovePerson}
             onSelectPerson={setSelectedPerson}
             selectedPerson={selectedPerson}
+            recentUpdates={recentUpdates}
           />
           <PersonDetail
             person={selectedPersonData}
