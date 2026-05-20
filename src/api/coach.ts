@@ -74,7 +74,7 @@ WICHTIG: Gib NUR valides JSON zurück. Keine Erklärungen außerhalb des JSON.`;
  * - In production (GitHub Pages): points to Cloudflare Worker (set via VITE_API_URL)
  * - In development: uses Vite proxy (/api)
  */
-const API_BASE = import.meta.env.VITE_API_URL || '';
+const API_BASE = '';
 
 /**
  * Call the coaching AI via the Cloudflare Worker proxy.
