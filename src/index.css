@@ -241,9 +241,9 @@ body {
   color: #8B7E6E;
   font-size: 0.9rem;
   display: flex;
-  gap: 4px;
   align-items: center;
 }
+.loading-text { margin-right: 2px; }
 .dot { animation: pulse 1.2s infinite; }
 .dot-2 { animation-delay: 0.2s; }
 .dot-3 { animation-delay: 0.4s; }
@@ -268,6 +268,13 @@ body {
   color: #3A3028;
 }
 .chat-input:focus { border-color: #B8A990; }
+.chat-textarea {
+  resize: none;
+  min-height: 40px;
+  max-height: 120px;
+  line-height: 1.4;
+  overflow-y: auto;
+}
 .chat-send {
   padding: 10px 20px;
   border-radius: 12px;
@@ -432,3 +439,131 @@ body {
   0% { opacity: 0; }
   100% { opacity: 1; }
 }
+
+/* ─── Mobile Board Hint Badge ─── */
+.board-hint-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: #D45B5B;
+  color: #FFF;
+  font-size: 0.68rem;
+  font-weight: 700;
+  margin-left: 6px;
+  animation: badge-pop 0.3s ease-out;
+}
+@keyframes badge-pop {
+  0% { transform: scale(0); }
+  70% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* ─── Add Person Button ─── */
+.wb-add-person-btn {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid #E0D5C5;
+  background: #FFFCF7;
+  color: #3A3028;
+  font-size: 1.5rem;
+  font-weight: 300;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transition: all 0.2s ease;
+  z-index: 8;
+  line-height: 1;
+}
+.wb-add-person-btn:hover {
+  background: #3A3028;
+  color: #FFF;
+  border-color: #3A3028;
+  transform: scale(1.1);
+}
+
+/* ─── Modal ─── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 20px;
+}
+.modal-card {
+  background: #FFFCF7;
+  border-radius: 16px;
+  padding: 0;
+  width: 100%;
+  max-width: 360px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.15);
+  font-family: 'Nunito', sans-serif;
+  overflow: hidden;
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #E0D5C5;
+  color: #3A3028;
+}
+.modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  color: #8B7E6E;
+}
+.modal-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.modal-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: #6B5E50;
+  font-weight: 600;
+}
+.modal-input {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #E0D5C5;
+  background: #FFF;
+  font-size: 0.92rem;
+  font-family: 'Nunito', sans-serif;
+  color: #3A3028;
+  outline: none;
+}
+.modal-input:focus { border-color: #B8A990; }
+.modal-footer {
+  display: flex;
+  gap: 8px;
+  padding: 16px 20px;
+  border-top: 1px solid #E0D5C5;
+  justify-content: flex-end;
+}
+.modal-btn {
+  padding: 8px 18px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-family: 'Nunito', sans-serif;
+}
+.modal-btn--secondary { background: #F0E6D8; color: #3A3028; }
+.modal-btn--primary { background: #3A3028; color: #FFF; }
+.modal-btn--primary:disabled { background: #CCC; cursor: default; }
+

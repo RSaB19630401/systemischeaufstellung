@@ -10,10 +10,20 @@ interface Props {
 export default function ChatPanel({ messages, onSend, isLoading }: Props) {
   const [input, setInput] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (el) {
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+    }
+  }, [input]);
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -39,22 +49,30 @@ export default function ChatPanel({ messages, onSend, isLoading }: Props) {
         ))}
         {isLoading && (
           <div className="chat-bubble chat-bubble--loading">
-            <span className="dot dot-1">●</span>
-            <span className="dot dot-2">●</span>
-            <span className="dot dot-3">●</span>
+            <span className="loading-text">Coach denkt nach</span>
+            <span className="dot dot-1">.</span>
+            <span className="dot dot-2">.</span>
+            <span className="dot dot-3">.</span>
           </div>
         )}
         <div ref={bottomRef} />
       </div>
 
       <div className="chat-input-bar">
-        <input
-          className="chat-input"
+        <textarea
+          ref={textareaRef}
+          className="chat-input chat-textarea"
           value={input}
           onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSubmit(e)}
-          placeholder="Nachricht eingeben..."
+          onKeyDown={e => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSubmit();
+            }
+          }}
+          placeholder="Nachricht eingeben... (Shift+Enter für neue Zeile)"
           disabled={isLoading}
+          rows={1}
         />
         <button
           className="chat-send"

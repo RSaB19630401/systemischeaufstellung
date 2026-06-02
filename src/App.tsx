@@ -1,11 +1,11 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import type {
   ConstellationTypeId, Person, Relationship,
   ChatMessage, ApiMessage, ConstellationExport, ConstellationUpdate,
   RecentUpdate,
 } from './types';
 import { CONSTELLATION_TYPES, EMOTIONS, ROLE_COLORS } from './constants';
-import { buildSystemPrompt, callCoachAPI } from './api/coach';
+import { buildSystemPrompt, callCoachAPI, trimConversation } from './api/coach';
 import { exportJSON, exportSVG, exportPNG, exportPDF, parseImportJSON } from './utils/export';
 
 import WelcomeScreen from './components/WelcomeScreen';
@@ -14,23 +14,71 @@ import Whiteboard from './components/Whiteboard';
 import PersonDetail from './components/PersonDetail';
 import Toolbar from './components/Toolbar';
 import Legend from './components/Legend';
+import AddPersonModal from './components/AddPersonModal';
 
 type Phase = 'welcome' | 'app';
 type MobileView = 'chat' | 'board';
 
+const STORAGE_KEY = 'systemische-aufstellung-autosave';
+
+function loadAutosave(): {
+  phase: Phase; type: ConstellationTypeId;
+  persons: Person[]; relationships: Relationship[];
+  chatMessages: ChatMessage[]; apiMessages: ApiMessage[];
+} | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (data.phase === 'app' && data.type && Array.isArray(data.persons)) return data;
+    return null;
+  } catch { return null; }
+}
+
 export default function App() {
-  const [phase, setPhase] = useState<Phase>('welcome');
-  const [constellationType, setConstellationType] = useState<ConstellationTypeId>('family');
-  const [persons, setPersons] = useState<Person[]>([]);
-  const [relationships, setRelationships] = useState<Relationship[]>([]);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [apiMessages, setApiMessages] = useState<ApiMessage[]>([]);
+  const saved = useRef(loadAutosave());
+
+  const [phase, setPhase] = useState<Phase>(saved.current?.phase || 'welcome');
+  const [constellationType, setConstellationType] = useState<ConstellationTypeId>(
+    saved.current?.type || 'family'
+  );
+  const [persons, setPersons] = useState<Person[]>(saved.current?.persons || []);
+  const [relationships, setRelationships] = useState<Relationship[]>(saved.current?.relationships || []);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(saved.current?.chatMessages || []);
+  const [apiMessages, setApiMessages] = useState<ApiMessage[]>(saved.current?.apiMessages || []);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<MobileView>('chat');
+  const [recentUpdates, setRecentUpdates] = useState<RecentUpdate[]>([]);
+  const [boardChangeHint, setBoardChangeHint] = useState(0);
+  const [showAddPerson, setShowAddPerson] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const colorIndex = useRef(0);
-  const [recentUpdates, setRecentUpdates] = useState<RecentUpdate[]>([]);
+
+  // Refs to avoid stale closures
+  const personsRef = useRef(persons);
+  const apiMessagesRef = useRef(apiMessages);
+  useEffect(() => { personsRef.current = persons; }, [persons]);
+  useEffect(() => { apiMessagesRef.current = apiMessages; }, [apiMessages]);
+
+  // Clear board hint when switching to board
+  useEffect(() => {
+    if (mobileView === 'board') setBoardChangeHint(0);
+  }, [mobileView]);
+
+  /* ─── Autosave ─── */
+  useEffect(() => {
+    if (phase !== 'app') return;
+    const timeout = setTimeout(() => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          phase, type: constellationType, persons, relationships, chatMessages, apiMessages,
+        }));
+      } catch { /* storage full or unavailable */ }
+    }, 500); // debounce
+    return () => clearTimeout(timeout);
+  }, [phase, constellationType, persons, relationships, chatMessages, apiMessages]);
 
   const nextColor = () => ROLE_COLORS[colorIndex.current++ % ROLE_COLORS.length];
 
@@ -44,7 +92,8 @@ export default function App() {
 
   /* ─── Apply board updates from AI ─── */
   const applyUpdates = useCallback((updates: ConstellationUpdate[]) => {
-    if (!updates || !Array.isArray(updates)) return;
+    if (!updates || !Array.isArray(updates) || updates.length === 0) return;
+    let changeCount = 0;
     updates.forEach(u => {
       switch (u.action) {
         case 'add_person':
@@ -54,15 +103,18 @@ export default function App() {
               return [...prev, { ...u.person, color: u.person.color || nextColor() }];
             });
             trackUpdate(u.person.id, 'appear');
+            changeCount++;
           }
           break;
         case 'move_person':
           setPersons(prev => prev.map(p => p.id === u.id ? { ...p, x: u.x, y: u.y } : p));
           trackUpdate(u.id, 'move');
+          changeCount++;
           break;
         case 'update_person':
           setPersons(prev => prev.map(p => p.id === u.id ? { ...p, ...u.changes } : p));
           if (u.changes.emotion) trackUpdate(u.id, 'emotion');
+          changeCount++;
           break;
         case 'remove_person':
           trackUpdate(u.id, 'remove');
@@ -70,6 +122,7 @@ export default function App() {
             setPersons(prev => prev.filter(p => p.id !== u.id));
             setRelationships(prev => prev.filter(r => r.fromId !== u.id && r.toId !== u.id));
           }, 500);
+          changeCount++;
           break;
         case 'add_relationship':
           if (u.relationship) {
@@ -78,6 +131,7 @@ export default function App() {
               return [...prev, u.relationship];
             });
             trackUpdate(u.relationship.id, 'new-relationship');
+            changeCount++;
           }
           break;
         case 'remove_relationship':
@@ -85,21 +139,28 @@ export default function App() {
           setTimeout(() => {
             setRelationships(prev => prev.filter(r => r.id !== u.id));
           }, 500);
+          changeCount++;
           break;
       }
     });
+    // Mobile hint
+    setBoardChangeHint(prev => prev + changeCount);
   }, [trackUpdate]);
 
   /* ─── Send user message to AI ─── */
   const sendMessage = useCallback(async (text: string) => {
     const userMsg: ChatMessage = { role: 'user', content: text, display: text };
     setChatMessages(prev => [...prev, userMsg]);
-    const newApiMsgs: ApiMessage[] = [...apiMessages, { role: 'user', content: text }];
+
+    // Use ref for current apiMessages to avoid stale closure
+    const currentApiMsgs = apiMessagesRef.current;
+    const newApiMsgs: ApiMessage[] = [...currentApiMsgs, { role: 'user', content: text }];
     setApiMessages(newApiMsgs);
     setIsLoading(true);
 
-    const systemPrompt = buildSystemPrompt(constellationType, persons, relationships);
-    const result = await callCoachAPI(newApiMsgs, systemPrompt);
+    const trimmed = trimConversation(newApiMsgs);
+    const systemPrompt = buildSystemPrompt(constellationType, personsRef.current, relationships);
+    const result = await callCoachAPI(trimmed, systemPrompt);
 
     const assistantMsg: ChatMessage = {
       role: 'assistant',
@@ -110,36 +171,32 @@ export default function App() {
     setApiMessages(prev => [...prev, { role: 'assistant', content: result.message }]);
     applyUpdates(result.updates);
     setIsLoading(false);
-  }, [apiMessages, constellationType, persons, relationships, applyUpdates]);
+  }, [constellationType, relationships, applyUpdates]);
 
   /* ─── Board interaction handlers ─── */
   const handleMovePerson = useCallback((id: string, x: number, y: number, finished = false) => {
     setPersons(prev => prev.map(p => p.id === id ? { ...p, x, y } : p));
     if (finished) {
-      setPersons(current => {
-        const person = current.find(p => p.id === id);
-        if (person) {
-          const sysMsg: ChatMessage = {
-            role: 'system', content: '',
-            display: `📌 ${person.name} wurde auf dem Brett verschoben.`,
-          };
-          setChatMessages(prev => [...prev, sysMsg]);
-          setApiMessages(prev => [
-            ...prev,
-            { role: 'user' as const, content: `[Änderung am Brett] ${person.name} wurde verschoben auf Position x=${Math.round(person.x)}, y=${Math.round(person.y)}.` },
-          ]);
-        }
-        return current;
-      });
+      const person = personsRef.current.find(p => p.id === id);
+      if (person) {
+        setChatMessages(prev => [...prev, {
+          role: 'system', content: '',
+          display: `📌 ${person.name} wurde auf dem Brett verschoben.`,
+        }]);
+        setApiMessages(prev => [
+          ...prev,
+          { role: 'user' as const, content: `[Änderung am Brett] ${person.name} wurde verschoben auf Position x=${Math.round(x)}, y=${Math.round(y)}.` },
+        ]);
+      }
     }
   }, []);
 
   const handleUpdatePerson = useCallback((id: string, changes: Partial<Person>) => {
     setPersons(prev => prev.map(p => p.id === id ? { ...p, ...changes } : p));
-    if (changes.emotion) trackUpdate(id, 'emotion');
-    setPersons(current => {
-      const person = current.find(p => p.id === id);
-      if (person && changes.emotion) {
+    if (changes.emotion) {
+      trackUpdate(id, 'emotion');
+      const person = personsRef.current.find(p => p.id === id);
+      if (person) {
         const label = EMOTIONS[changes.emotion]?.label || changes.emotion;
         const notification = `${person.name} fühlt sich jetzt: ${label}`;
         setChatMessages(prev => [...prev, {
@@ -150,9 +207,31 @@ export default function App() {
           { role: 'user' as const, content: `[Änderung am Brett] ${notification}` },
         ]);
       }
-      return current;
-    });
-  }, []);
+    }
+  }, [trackUpdate]);
+
+  /* ─── Manual add person ─── */
+  const handleAddPersonManual = useCallback((name: string, role: string) => {
+    const id = name.toLowerCase().replace(/\s+/g, '-') + '-' + Math.random().toString(36).slice(2, 5);
+    const newPerson: Person = {
+      id, name, role,
+      x: 30 + Math.random() * 40,
+      y: 30 + Math.random() * 40,
+      emotion: 'neutral',
+      color: nextColor(),
+    };
+    setPersons(prev => [...prev, newPerson]);
+    trackUpdate(id, 'appear');
+    setChatMessages(prev => [...prev, {
+      role: 'system', content: '',
+      display: `➕ ${name} (${role}) wurde manuell hinzugefügt.`,
+    }]);
+    setApiMessages(prev => [
+      ...prev,
+      { role: 'user' as const, content: `[Änderung am Brett] Neue Person manuell hinzugefügt: ${name} (${role}), Position x=${Math.round(newPerson.x)}, y=${Math.round(newPerson.y)}.` },
+    ]);
+    setShowAddPerson(false);
+  }, [trackUpdate]);
 
   /* ─── Start constellation ─── */
   const handleStart = useCallback(async (
@@ -223,7 +302,9 @@ export default function App() {
       setChatMessages([]);
       setApiMessages([]);
       setSelectedPerson(null);
+      setBoardChangeHint(0);
       colorIndex.current = 0;
+      localStorage.removeItem(STORAGE_KEY);
     }
   };
 
@@ -260,6 +341,9 @@ export default function App() {
             onClick={() => setMobileView(tab)}
           >
             {tab === 'chat' ? '💬 Chat' : '📋 Brett'}
+            {tab === 'board' && boardChangeHint > 0 && mobileView !== 'board' && (
+              <span className="board-hint-badge">{boardChangeHint}</span>
+            )}
           </button>
         ))}
       </div>
@@ -279,12 +363,19 @@ export default function App() {
             onSelectPerson={setSelectedPerson}
             selectedPerson={selectedPerson}
             recentUpdates={recentUpdates}
+            onAddPerson={() => setShowAddPerson(true)}
           />
           <PersonDetail
             person={selectedPersonData}
             onUpdate={handleUpdatePerson}
             onDeselect={() => setSelectedPerson(null)}
           />
+          {showAddPerson && (
+            <AddPersonModal
+              onAdd={handleAddPersonManual}
+              onClose={() => setShowAddPerson(false)}
+            />
+          )}
         </div>
       </div>
     </div>

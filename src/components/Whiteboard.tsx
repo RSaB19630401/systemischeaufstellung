@@ -10,10 +10,11 @@ interface Props {
   onSelectPerson: (id: string) => void;
   selectedPerson: string | null;
   recentUpdates: RecentUpdate[];
+  onAddPerson: () => void;
 }
 
 export default function Whiteboard({
-  persons, relationships, onMovePerson, onSelectPerson, selectedPerson, recentUpdates,
+  persons, relationships, onMovePerson, onSelectPerson, selectedPerson, recentUpdates, onAddPerson,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [dragging, setDragging] = useState<string | null>(null);
@@ -273,6 +274,9 @@ export default function Whiteboard({
           </text>
         )}
       </svg>
+      <button className="wb-add-person-btn" onClick={onAddPerson} title="Person hinzufügen">
+        +
+      </button>
     </div>
   );
 }
