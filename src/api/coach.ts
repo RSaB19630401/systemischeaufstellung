@@ -3,6 +3,7 @@ import type {
   ApiMessage, CoachResponse,
 } from '../types';
 import { CONSTELLATION_TYPES } from '../constants';
+import { kiFetch } from './kiFetch';
 
 /**
  * Build the system prompt for the coaching AI, including
@@ -110,7 +111,7 @@ export async function callCoachAPI(
   systemPrompt: string,
 ): Promise<CoachResponse> {
   try {
-    const response = await fetch(`${API_BASE}/api/chat`, {
+    const response = await kiFetch(`${API_BASE}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages, system: systemPrompt }),
@@ -122,7 +123,7 @@ export async function callCoachAPI(
         return { message: 'Der KI-Coach ist gerade überlastet. Bitte warte einen Moment und versuche es erneut.', updates: [] };
       }
       if (status === 401 || status === 403) {
-        return { message: 'Es gibt ein Problem mit der API-Konfiguration. Bitte überprüfe den API-Key.', updates: [] };
+        return { message: status === 401 ? 'Ohne gültigen Zugangscode ist der KI-Coach nicht verfügbar. Bitte lade die Seite neu und gib den Code ein.' : 'Es gibt ein Problem mit der API-Konfiguration. Bitte überprüfe den API-Key.', updates: [] };
       }
       throw new Error(`HTTP ${status}`);
     }
